@@ -1,0 +1,25 @@
+name: "Cordyceps Lab Console"
+version: "0.1.1"
+slug: "cordyceps-lab-console"
+description: "Local-first cultivation lab dashboard for Cordyceps militaris workflows"
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+panel_icon: "mdi:flask"
+panel_title: "Cordyceps Lab"
+ports:
+  "3001/tcp": 3001
+ingress: true
+ingress_port: 3001
+webui: "http://[HOST]:[PORT:3001]"
+host_network: false
+homeassistant_api: true
+full_access: false
+legacy: true
+
+options:
+  port: 3001
+schema:
+  port: int
