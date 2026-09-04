@@ -1,6 +1,8 @@
-# Cordyceps Lab Console
+# Cordyceps Lab Apps
 
-A local-first lab management dashboard for Cordyceps militaris cultivation, designed for physical lab use and Home Assistant OS deployment.
+Home Assistant App repository for a local-first lab management dashboard for Cordyceps militaris cultivation.
+
+The app is located in `cordyceps_lab_console/` and follows the official Home Assistant Apps repository layout.
 
 ## Stack
 - React + Vite + TypeScript
