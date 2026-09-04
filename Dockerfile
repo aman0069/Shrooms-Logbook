@@ -1,5 +1,10 @@
 FROM node:22-alpine
 
+LABEL \
+	io.hass.version="0.1.0" \
+	io.hass.type="app" \
+	io.hass.arch="amd64|aarch64"
+
 WORKDIR /app
 
 COPY package*.json ./
