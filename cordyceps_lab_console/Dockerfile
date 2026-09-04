@@ -1,9 +1,11 @@
-FROM node:22-alpine
+FROM ghcr.io/home-assistant/base:latest
 
 LABEL \
-	io.hass.version="0.1.1" \
+	io.hass.version="0.1.2" \
 	io.hass.type="app" \
 	io.hass.arch="amd64|aarch64"
+
+RUN apk add --no-cache nodejs npm
 
 WORKDIR /app
 
@@ -12,9 +14,11 @@ RUN npm install
 
 COPY . .
 ENV DATABASE_URL="file:/data/lab.db"
+COPY run.sh /run.sh
+RUN chmod a+x /run.sh
 RUN npx prisma generate
 RUN npm run build
 
 EXPOSE 3001
 
-CMD ["sh", "/app/run.sh"]
+CMD ["/run.sh"]

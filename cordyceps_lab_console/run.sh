@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/with-contenv bashio
 set -e
 
-export PORT=${PORT:-3001}
+export PORT="$(bashio::config 'port')"
 
 npx prisma db push --skip-generate
 
