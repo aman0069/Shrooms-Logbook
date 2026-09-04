@@ -5,10 +5,6 @@ This project is a local-first, purpose-built lab management application for Cord
 
 ## Current Tech Stack
 - Frontend: React + Vite + TypeScript
-- Styling: Tailwind CSS, with a cyberpunk/dark-mode UI direction
-- Motion: Framer Motion for micro-interactions
-- Backend: Node.js + Express-ready structure (can be upgraded to Next.js API routes if needed)
-- Database: SQLite with Prisma ORM
 - Deployment: Dockerfile, config.yaml, and run.sh for HA add-on packaging with Home Assistant Ingress
 - Target environment: Home Assistant OS / HA Ingress / local-only lab usage
 
