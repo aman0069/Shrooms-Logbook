@@ -25,6 +25,8 @@ npx prisma db push
 ```
 
 ## Home Assistant add-on notes
-- Package the app as a Docker add-on using `Dockerfile`, `config.yaml`, and `run.sh`.
-- Use Ingress to expose the dashboard through Home Assistant.
-- Keep metadata and data in the add-on storage volume.
+- Add this GitHub repository to Home Assistant under **Settings > Add-ons > Add-on store > Repositories**:
+	`https://github.com/aman0069/Shrooms-Logbook`
+- Install **Cordyceps Lab Console**, start it, and open it from the Home Assistant sidebar.
+- Ingress provides the sidebar panel; the panel title is `Cordyceps Lab` and the icon is `mdi:flask`.
+- The SQLite database is stored at `/data/lab.db` in the add-on storage volume.

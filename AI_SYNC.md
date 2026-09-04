@@ -9,7 +9,7 @@ This project is a local-first, purpose-built lab management application for Cord
 - Motion: Framer Motion for micro-interactions
 - Backend: Node.js + Express-ready structure (can be upgraded to Next.js API routes if needed)
 - Database: SQLite with Prisma ORM
-- Deployment: Dockerfile, config.yaml, and run.sh for HA add-on packaging
+- Deployment: Dockerfile, config.yaml, and run.sh for HA add-on packaging with Home Assistant Ingress
 - Target environment: Home Assistant OS / HA Ingress / local-only lab usage
 
 ## Database Schema (Prisma)
@@ -111,13 +111,12 @@ Current state:
 - React + Vite foundation created and ready for styling and UI iteration.
 - Dark-mode lab dashboard with quick-entry panel is in place.
 - Core database schema has been defined around batches, jars, activity logs, and contamination events.
-- The app is intended for HAOS packaging, but Docker and add-on files still need to be added.
+- The app is packaged as a Home Assistant add-on with Ingress, a sidebar panel, and persistent SQLite storage at `/data/lab.db`.
 
 Next steps:
-1. Add Prisma schema and migration setup.
-2. Add SQLite database initialization and API endpoints.
-3. Build the dashboard data model and live CRUD operations.
-4. Implement HAOS add-on packaging files.
-5. Add batch/jar management screens and observation logging.
+1. Expand SQLite database initialization and API endpoints.
+2. Build the dashboard data model and live CRUD operations.
+3. Add batch/jar management screens and observation logging.
+4. Test the add-on on a Home Assistant OS installation.
 
 > Reminder: whenever the database schema, app logic, or major UI structure changes significantly, update this file so both AI assistants stay in sync.
