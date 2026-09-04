@@ -1,5 +1,5 @@
 name: "Cordyceps Lab Console"
-version: "0.1.0"
+version: "0.1.1"
 slug: "cordyceps-lab-console"
 description: "Local-first cultivation lab dashboard for Cordyceps militaris workflows"
 arch:
