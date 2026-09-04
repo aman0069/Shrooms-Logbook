@@ -8,10 +8,12 @@ arch:
   - aarch64
 init: false
 panel_icon: "mdi:flask"
+panel_title: "Cordyceps Lab"
 ports:
   "3001/tcp": 3001
 ingress: true
 ingress_port: 3001
+webui: "http://[HOST]:[PORT:3001]"
 host_network: false
 homeassistant_api: true
 homeassistant: true
