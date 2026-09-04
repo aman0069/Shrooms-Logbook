@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Batch {
+  id                 String              @id @default(cuid())
+  batchCode          String              @unique
+  strain             String
+  dateCreated        DateTime            @default(now())
+  currentStage       String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  jars              Jar[]
+  activityLogs      ActivityLog[]
+  contaminationEvents ContaminationEvent[]
+}
+
+model Jar {
+  id                String            @id @default(cuid())
+  jarCode           String            @unique
+  batchId           String
+  batch             Batch             @relation(fields: [batchId], references: [id])
+  currentStage      String
+  createdAt         DateTime          @default(now())
+  movedAt           DateTime?
+
+  activityLogs      ActivityLog[]
+  contaminationEvents ContaminationEvent[]
+}
+
+model ActivityLog {
+  id              String        @id @default(cuid())
+  type            String
+  timestamp       DateTime      @default(now())
+  description     String
+  notes           String?
+  durationMinutes Int?
+  jarCount        Int?
+  batchId         String?
+  batch           Batch?        @relation(fields: [batchId], references: [id])
+  jarId           String?
+  jar             Jar?          @relation(fields: [jarId], references: [id])
+}
+
+model ContaminationEvent {
+  id                String    @id @default(cuid())
+  batchId           String?
+  batch             Batch?    @relation(fields: [batchId], references: [id])
+  jarId             String?
+  jar               Jar?      @relation(fields: [jarId], references: [id])
+  contaminationType String?
+  notes             String?
+  lostJarCount      Int
+  createdAt         DateTime  @default(now())
+}
