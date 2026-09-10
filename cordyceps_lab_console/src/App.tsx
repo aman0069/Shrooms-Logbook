@@ -44,6 +44,11 @@ const localNow = () => {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 }
 
+const requestId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 function App() {
   const query = new URLSearchParams(window.location.search)
   const [batches, setBatches] = useState<Batch[]>([])
@@ -61,7 +66,7 @@ function App() {
   const [scanPayload, setScanPayload] = useState<ScanPayload | null>(null)
   const [scanError, setScanError] = useState('')
   const [prefilledBatchId, setPrefilledBatchId] = useState<string | undefined>(query.get('batchId') || undefined)
-  const [clientRequestId, setClientRequestId] = useState(() => crypto.randomUUID())
+  const [clientRequestId, setClientRequestId] = useState(requestId)
   const qrRef = useRef<HTMLImageElement>(null)
   const barcodeRef = useRef<SVGSVGElement>(null)
 
@@ -103,7 +108,7 @@ function App() {
     setNotes('')
     setJarCount('')
     setDetails({})
-    setClientRequestId(crypto.randomUUID())
+    setClientRequestId(requestId())
     setFeedback(null)
   }
 
