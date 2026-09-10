@@ -8,6 +8,125 @@ datasource db {
 }
 
 model Batch {
+  id                  String   @id @default(cuid())
+  batchCode           String   @unique
+  strain              String   @default("Cordyceps militaris")
+  dateCreated         DateTime @default(now())
+  currentStage        String   @default("Autoclaved")
+  status              String   @default("active")
+  currentLocation     String?
+  jarCount            Int      @default(0)
+  qrToken             String   @unique
+  barcodeValue        String   @unique
+  notes               String?
+  autoclaveActivityId String?  @unique
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  jars                Jar[]
+  activityLogs        ActivityLog[]
+  contaminationEvents ContaminationEvent[]
+  photos              ActivityPhoto[]
+  sensorSnapshots     SensorSnapshot[]
+}
+
+model Jar {
+  id              String    @id @default(cuid())
+  jarCode         String    @unique
+  batchId         String
+  sequenceNumber  Int
+  qrToken         String    @unique
+  status          String    @default("active")
+  currentLocation String?
+  currentStage    String    @default("Autoclaved")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  movedAt         DateTime?
+
+  batch               Batch                @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  activityLogs        ActivityLog[]
+  contaminationEvents ContaminationEvent[]
+
+  @@unique([batchId, sequenceNumber])
+}
+
+model ActivityLog {
+  id               String           @id @default(cuid())
+  type             String
+  processType      String?
+  activityDateTime DateTime         @default(now())
+  timestamp        DateTime         @default(now())
+  description      String
+  operator         String?
+  notes            String?
+  detailsJson      String?
+  durationMinutes  Int?
+  jarCount         Int?
+  googleSyncStatus String           @default("pending")
+  googleSyncError  String?
+  clientRequestId  String?          @unique
+  batchId          String?
+  batch            Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  jarId            String?
+  jar              Jar?             @relation(fields: [jarId], references: [id], onDelete: SetNull)
+  photos           ActivityPhoto[]
+  sensorSnapshots  SensorSnapshot[]
+
+  @@index([activityDateTime])
+  @@index([processType])
+}
+
+model ActivityPhoto {
+  id               String      @id @default(cuid())
+  activityId       String
+  localPath        String
+  originalFilename String
+  mimeType         String
+  createdAt        DateTime    @default(now())
+  activity         ActivityLog @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  batchId          String?
+  batch            Batch?      @relation(fields: [batchId], references: [id], onDelete: SetNull)
+}
+
+model SensorSnapshot {
+  id                String      @id @default(cuid())
+  activityId        String
+  capturedAt        DateTime    @default(now())
+  roomLocation      String?
+  temperatureC      Float?
+  temperatureStatus String      @default("missing")
+  humidityRh        Float?
+  humidityStatus    String      @default("missing")
+  co2Ppm            Float?
+  co2Status         String      @default("missing")
+  lux               Float?
+  luxStatus         String      @default("missing")
+  source            String      @default("missing")
+  activity          ActivityLog @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  batchId           String?
+  batch             Batch?      @relation(fields: [batchId], references: [id], onDelete: SetNull)
+}
+
+model ContaminationEvent {
+  id                String   @id @default(cuid())
+  batchId           String?
+  batch             Batch?   @relation(fields: [batchId], references: [id])
+  jarId             String?
+  jar               Jar?     @relation(fields: [jarId], references: [id])
+  contaminationType String?
+  notes             String?
+  lostJarCount      Int
+  createdAt         DateTime @default(now())
+}generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Batch {
   id String @id @default(cuid())
   batchCode String @unique
   strain String @default("Cordyceps militaris")
