@@ -51,6 +51,22 @@ const requestId = () => {
 
 const apiUrl = (path: string) => `api/${path.replace(/^\//, '')}`
 
+async function readJson<T>(response: Response, endpoint: string): Promise<T> {
+  const body = await response.text()
+  let payload: unknown
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    const preview = body.replace(/\s+/g, ' ').trim().slice(0, 160)
+    throw new Error(`${endpoint} returned invalid JSON (${response.status}): ${preview || 'empty response'}`)
+  }
+  if (!response.ok) {
+    const message = payload && typeof payload === 'object' && 'error' in payload ? String(payload.error) : `HTTP ${response.status}`
+    throw new Error(`${endpoint} failed: ${message}`)
+  }
+  return payload as T
+}
+
 function App() {
   const query = new URLSearchParams(window.location.search)
   const [batches, setBatches] = useState<Batch[]>([])
@@ -74,9 +90,12 @@ function App() {
 
   const refresh = async () => {
     const [batchResponse, activityResponse] = await Promise.all([fetch(apiUrl('batches')), fetch(apiUrl('activities'))])
-    if (!batchResponse.ok || !activityResponse.ok) throw new Error('Could not load local lab data.')
-    setBatches(await batchResponse.json())
-    setActivities(await activityResponse.json())
+    const [batchData, activityData] = await Promise.all([
+      readJson<Batch[]>(batchResponse, 'Batches API'),
+      readJson<Activity[]>(activityResponse, 'Activities API'),
+    ])
+    setBatches(batchData)
+    setActivities(activityData)
   }
 
   useEffect(() => {
@@ -96,9 +115,7 @@ function App() {
     if (!token) { setScanError('Label not found.'); return }
     fetch(`${apiUrl('lab-scan')}?t=${encodeURIComponent(token)}`)
       .then(async (response) => {
-        const payload = await response.json()
-        if (!response.ok) throw new Error(payload.error || 'Label not found.')
-        setScanPayload(payload)
+        setScanPayload(await readJson<ScanPayload>(response, 'Lab scan API'))
       })
       .catch((error: Error) => setScanError(error.message))
   }, [])
@@ -128,8 +145,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ processType: selectedProcess, activityDateTime, operator, notes, jarCount: jarCount ? Number(jarCount) : undefined, detailsJson: details, createJarLabels, batchId: prefilledBatchId, clientRequestId }),
       })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'The activity could not be saved.')
+      const payload = await readJson<{ batchCode?: string }>(response, 'Activity API')
       await refresh()
       setSelectedProcess(null)
       setFeedback({ kind: 'success', text: payload.batchCode ? `Saved. New batch ${payload.batchCode} created.` : 'Activity saved locally.' })
