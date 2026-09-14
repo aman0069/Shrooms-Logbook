@@ -49,6 +49,8 @@ const requestId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+const apiUrl = (path: string) => `api/${path.replace(/^\//, '')}`
+
 function App() {
   const query = new URLSearchParams(window.location.search)
   const [batches, setBatches] = useState<Batch[]>([])
@@ -71,7 +73,7 @@ function App() {
   const barcodeRef = useRef<SVGSVGElement>(null)
 
   const refresh = async () => {
-    const [batchResponse, activityResponse] = await Promise.all([fetch('/api/batches'), fetch('/api/activities')])
+    const [batchResponse, activityResponse] = await Promise.all([fetch(apiUrl('batches')), fetch(apiUrl('activities'))])
     if (!batchResponse.ok || !activityResponse.ok) throw new Error('Could not load local lab data.')
     setBatches(await batchResponse.json())
     setActivities(await activityResponse.json())
@@ -92,7 +94,7 @@ function App() {
     if (window.location.pathname !== '/lab-scan') return
     const token = new URLSearchParams(window.location.search).get('t')
     if (!token) { setScanError('Label not found.'); return }
-    fetch(`/api/lab-scan?t=${encodeURIComponent(token)}`)
+    fetch(`${apiUrl('lab-scan')}?t=${encodeURIComponent(token)}`)
       .then(async (response) => {
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error || 'Label not found.')
@@ -121,7 +123,7 @@ function App() {
     setSaving(true)
     setFeedback(null)
     try {
-      const response = await fetch('/api/activities', {
+      const response = await fetch(apiUrl('activities'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ processType: selectedProcess, activityDateTime, operator, notes, jarCount: jarCount ? Number(jarCount) : undefined, detailsJson: details, createJarLabels, batchId: prefilledBatchId, clientRequestId }),
