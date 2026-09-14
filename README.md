@@ -55,6 +55,8 @@ Start the API server:
 npm run server
 ```
 
+For local development, the API uses `prisma/dev.db` by default. Set `DATABASE_URL` to use a different SQLite database. When running the Vite frontend and API separately, Vite proxies `/api` requests to port `3001`.
+
 Build the production bundle:
 
 ```bash
@@ -74,6 +76,26 @@ Push the schema to SQLite:
 ```bash
 npm run db:push
 ```
+
+For a fresh database, apply committed migrations with:
+
+```bash
+npm run db:migrate
+```
+
+For an existing pre-batch database, run `npm run db:push` once to apply the additive schema changes, then use `npm run db:migrate` for subsequent deployments. The Home Assistant add-on initializes the persistent database at `/data/lab.db`.
+
+## Batch tracking verification
+
+```powershell
+$env:DATABASE_URL="file:./prisma/test.db"
+npx prisma db push --skip-generate --accept-data-loss
+npm run db:generate
+npm run build
+$env:PORT="3020"; npm run server:prod
+```
+
+Post an autoclave event to `POST /api/activities` with `processType`, `activityDateTime`, `jarCount`, and a unique `clientRequestId`. The response returns a permanent ID such as `AC-20260910-01`. Resolve its opaque QR token with `GET /api/lab-scan?t=<token>`. Reusing the same request ID returns the original result instead of creating a duplicate batch.
 
 Open Prisma Studio:
 
@@ -104,6 +126,7 @@ This app is intended to run as a Home Assistant add-on panel:
   - ingress enabled on port `3001`
 
 The application listens on port `3001` and serves the dashboard through Home Assistant ingress.
+Optional sensor capture uses `HA_URL`, `HA_TOKEN`, and the entity mapping variables in `.env.example`. Unmapped or unavailable readings are stored as `NULL` with an explicit status; the app never changes sensor or cultivation settings.
 
 ## Notes
 

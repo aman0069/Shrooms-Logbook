@@ -1,10 +1,8 @@
-#!/bin/bash
+#!/usr/bin/with-contenv bashio
 set -e
 
-export PORT=${PORT:-3001}
+export PORT="$(bashio::config 'port')"
 
-if [ ! -f /data/lab.db ]; then
-  cp /app/prisma/dev.db /data/lab.db 2>/dev/null || true
-fi
+npx prisma db push --skip-generate
 
-npm run server
+npm run server:prod
