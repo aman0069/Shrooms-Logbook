@@ -3,6 +3,7 @@ import express from 'express'
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { z } from 'zod'
 import { prisma } from './db'
 
 const app = express()
@@ -60,35 +61,49 @@ type SensorSnapshotInput = {
   lux: number | null
   luxStatus: string
   source: string
+  metadataJson: string
 }
+
+const activityInputSchema = z.object({
+  processType: z.string().trim().min(1),
+  activityDateTime: z.union([z.string().trim().min(1), z.date()]).optional(),
+  operator: z.string().trim().max(120).optional(),
+  notes: z.string().trim().max(5000).optional(),
+  detailsJson: z.union([z.string().max(20000), z.record(z.string(), z.string())]).optional(),
+  batchId: z.string().trim().min(1).optional(),
+  jarIds: z.array(z.string().trim().min(1)).max(500).optional(),
+  createJarLabels: z.boolean().optional(),
+  clientRequestId: z.string().trim().min(8).max(120),
+  jarCount: z.union([z.number(), z.string()]).optional(),
+})
 
 async function captureSensorSnapshots() {
   const baseUrl = process.env.HA_URL?.replace(/\/$/, '')
   const token = process.env.HA_TOKEN
   const rooms = [
-    { name: 'dark', label: 'Dark room', temperature: process.env.HA_DARK_ROOM_TEMPERATURE_ENTITY, humidity: process.env.HA_DARK_ROOM_HUMIDITY_ENTITY, co2: process.env.HA_DARK_ROOM_CO2_ENTITY, lux: process.env.HA_DARK_ROOM_LUX_ENTITY },
-    { name: 'light', label: 'Light room', temperature: process.env.HA_LIGHT_ROOM_TEMPERATURE_ENTITY, humidity: process.env.HA_LIGHT_ROOM_HUMIDITY_ENTITY, co2: process.env.HA_LIGHT_ROOM_CO2_ENTITY, lux: process.env.HA_LIGHT_ROOM_LUX_ENTITY },
+    { label: 'Dark room', temperature: process.env.HA_DARK_ROOM_TEMPERATURE_ENTITY, humidity: process.env.HA_DARK_ROOM_HUMIDITY_ENTITY, co2: process.env.HA_DARK_ROOM_CO2_ENTITY, lux: process.env.HA_DARK_ROOM_LUX_ENTITY },
+    { label: 'Light room', temperature: process.env.HA_LIGHT_ROOM_TEMPERATURE_ENTITY, humidity: process.env.HA_LIGHT_ROOM_HUMIDITY_ENTITY, co2: process.env.HA_LIGHT_ROOM_CO2_ENTITY, lux: process.env.HA_LIGHT_ROOM_LUX_ENTITY },
   ]
-  if (!baseUrl || !token) return rooms.map((room) => ({ roomLocation: room.label, temperatureC: null, temperatureStatus: 'missing', humidityRh: null, humidityStatus: 'missing', co2Ppm: null, co2Status: 'missing', lux: null, luxStatus: 'missing', source: 'missing' }))
+  if (!baseUrl || !token) return rooms.map((room) => ({ roomLocation: room.label, temperatureC: null, temperatureStatus: 'missing', humidityRh: null, humidityStatus: 'missing', co2Ppm: null, co2Status: 'missing', lux: null, luxStatus: 'missing', source: 'missing', metadataJson: JSON.stringify({ temperature: { entityId: room.temperature ?? null, rawState: null, capturedAt: null }, humidity: { entityId: room.humidity ?? null, rawState: null, capturedAt: null }, co2: { entityId: room.co2 ?? null, rawState: null, capturedAt: null }, lux: { entityId: room.lux ?? null, rawState: null, capturedAt: null } }) }))
 
   const read = async (entityId: string | undefined) => {
-    if (!entityId) return { value: null, status: 'missing' }
+    if (!entityId) return { value: null, rawState: null, capturedAt: null, status: 'missing' }
     try {
       const response = await fetch(`${baseUrl}/api/states/${encodeURIComponent(entityId)}`, { headers: { Authorization: `Bearer ${token}` } })
-      if (!response.ok) return { value: null, status: 'unavailable' }
-      const state = await response.json() as { state?: string }
+      if (!response.ok) return { value: null, rawState: null, capturedAt: new Date().toISOString(), status: 'unavailable' }
+      const state = await response.json() as { state?: string; last_updated?: string }
       const value = Number(state.state)
-      return Number.isFinite(value) ? { value, status: 'home_assistant' } : { value: null, status: 'unavailable' }
+      return Number.isFinite(value) ? { value, rawState: state.state ?? null, capturedAt: state.last_updated ?? new Date().toISOString(), status: 'home_assistant' } : { value: null, rawState: state.state ?? null, capturedAt: state.last_updated ?? new Date().toISOString(), status: 'unavailable' }
     } catch (error) {
       console.warn('[sensor-read] Home Assistant sensor unavailable', error)
-      return { value: null, status: 'unavailable' }
+      return { value: null, rawState: null, capturedAt: new Date().toISOString(), status: 'unavailable' }
     }
   }
 
   return Promise.all(rooms.map(async (room): Promise<SensorSnapshotInput> => {
     const [temperature, humidity, co2, lux] = await Promise.all([read(room.temperature), read(room.humidity), read(room.co2), read(room.lux)])
     const statuses = [temperature.status, humidity.status, co2.status, lux.status]
-    return { roomLocation: room.label, temperatureC: temperature.value, temperatureStatus: temperature.status, humidityRh: humidity.value, humidityStatus: humidity.status, co2Ppm: co2.value, co2Status: co2.status, lux: lux.value, luxStatus: lux.status, source: statuses.some((status) => status === 'home_assistant') ? 'home_assistant' : statuses.some((status) => status === 'unavailable') ? 'unavailable' : 'missing' }
+    return { roomLocation: room.label, temperatureC: temperature.value, temperatureStatus: temperature.status, humidityRh: humidity.value, humidityStatus: humidity.status, co2Ppm: co2.value, co2Status: co2.status, lux: lux.value, luxStatus: lux.status, source: statuses.some((status) => status === 'home_assistant') ? 'home_assistant' : statuses.some((status) => status === 'unavailable') ? 'unavailable' : 'missing', metadataJson: JSON.stringify({ temperature: { entityId: room.temperature ?? null, rawState: temperature.rawState, capturedAt: temperature.capturedAt }, humidity: { entityId: room.humidity ?? null, rawState: humidity.rawState, capturedAt: humidity.capturedAt }, co2: { entityId: room.co2 ?? null, rawState: co2.rawState, capturedAt: co2.capturedAt }, lux: { entityId: room.lux ?? null, rawState: lux.rawState, capturedAt: lux.capturedAt } }) }
   }))
 }
 
@@ -172,18 +187,19 @@ app.get('/api/lab-scan', async (req, res, next) => {
 
 app.post('/api/activities', async (req, res, next) => {
   try {
-    const { processType, operator, notes, detailsJson, batchId, jarIds, createJarLabels, clientRequestId } = req.body as Record<string, unknown>
+    const input = activityInputSchema.parse(req.body)
+    const { processType, operator, notes, detailsJson, batchId, jarIds, createJarLabels, clientRequestId } = input
     if (typeof processType !== 'string' || !processTypes.has(processType)) throw new Error('Choose a valid activity process.')
-  const activityDateTime = parseActivityDateTime(req.body.activityDateTime)
-  const jarCount = positiveInteger(req.body.jarCount, 'Jar count')
-  const selectedJarIds = Array.isArray(jarIds) ? jarIds.filter((id): id is string => typeof id === 'string') : []
+  const activityDateTime = parseActivityDateTime(input.activityDateTime)
+  const jarCount = positiveInteger(input.jarCount, 'Jar count')
+  const selectedJarIds = jarIds ?? []
   const details = typeof detailsJson === 'string' ? detailsJson : JSON.stringify(detailsJson ?? {})
   const sensorSnapshots = await captureSensorSnapshots()
 
     const result = await prisma.$transaction(async (tx) => {
       if (typeof clientRequestId === 'string') {
         const existing = await tx.activityLog.findUnique({ where: { clientRequestId }, include: { batch: true } })
-        if (existing) return { activityId: existing.id, batchId: existing.batchId, batchCode: existing.batch?.batchCode ?? null }
+        if (existing) return { activityId: existing.id, batchId: existing.batchId, batchCode: existing.batch?.batchCode ?? null, idempotent: true }
       }
   let resolvedBatchId = typeof batchId === 'string' ? batchId : undefined
   let createdBatch = null
@@ -194,10 +210,10 @@ app.post('/api/activities', async (req, res, next) => {
           activityDateTime,
           timestamp: activityDateTime,
           description: processType,
-          operator: typeof operator === 'string' ? operator.trim() || null : null,
-          notes: typeof notes === 'string' ? notes.trim() || null : null,
+          operator: operator?.trim() || null,
+          notes: notes?.trim() || null,
           detailsJson: details,
-          clientRequestId: typeof clientRequestId === 'string' ? clientRequestId : null,
+          clientRequestId,
           jarCount: jarCount || null,
           batchId: resolvedBatchId,
         },
@@ -214,7 +230,7 @@ app.post('/api/activities', async (req, res, next) => {
             barcodeValue: batchCode,
             currentStage: 'Autoclaved',
             currentLocation: 'Autoclave',
-            notes: typeof notes === 'string' ? notes.trim() || null : null,
+            notes: notes?.trim() || null,
             autoclaveActivityId: activity.id,
           },
   })
@@ -243,10 +259,10 @@ app.post('/api/activities', async (req, res, next) => {
   await tx.activityLog.update({ where: { id: activity.id }, data: { jarId: jars[0].id, batchId: resolvedBatchId ?? jars[0].batchId } })
       }
 
-      return { activityId: activity.id, batchId: resolvedBatchId, batchCode: createdBatch?.batchCode ?? null }
+      return { activityId: activity.id, batchId: resolvedBatchId, batchCode: createdBatch?.batchCode ?? null, idempotent: false }
     })
 
-    res.status(201).json({ ...result, googleSyncStatus: 'pending' })
+    res.status(result.idempotent ? 200 : 201).json({ ...result, googleSyncStatus: 'pending' })
   } catch (error) {
     console.error('[activity-save] failed', error)
     next(error)

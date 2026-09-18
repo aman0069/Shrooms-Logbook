@@ -102,6 +102,7 @@ model SensorSnapshot {
   lux               Float?
   luxStatus         String      @default("missing")
   source            String      @default("missing")
+  metadataJson      String?
   activity          ActivityLog @relation(fields: [activityId], references: [id], onDelete: Cascade)
   batchId           String?
   batch             Batch?      @relation(fields: [batchId], references: [id], onDelete: SetNull)

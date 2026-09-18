@@ -1,7 +1,7 @@
 {
   "name": "cordyceps-lab-app",
   "private": true,
-  "version": "0.2.5",
+  "version": "0.2.6",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 8099",
@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 8099",
     "server": "tsx watch server/index.ts",
     "server:prod": "tsx server/index.ts",
+    "test:api": "tsx tests/api-smoke.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
@@ -28,7 +29,8 @@
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.5",

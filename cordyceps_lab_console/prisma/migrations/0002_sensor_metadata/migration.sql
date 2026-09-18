@@ -1,0 +1,1 @@
+ALTER TABLE "SensorSnapshot" ADD COLUMN "metadataJson" TEXT;

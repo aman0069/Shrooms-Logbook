@@ -37,6 +37,10 @@ type Activity = {
   batch?: Batch
   googleSyncStatus: string
 }
+type PendingActivity = {
+  clientRequestId: string
+  payload: Record<string, unknown>
+}
 type ScanPayload = { kind: 'batch' | 'jar'; record: Batch & { jarCode?: string; batch?: Batch } }
 
 const localNow = () => {
@@ -50,6 +54,7 @@ const requestId = () => {
 }
 
 const apiUrl = (path: string) => `api/${path.replace(/^\//, '')}`
+const pendingActivitiesKey = 'cordyceps.pendingActivities'
 
 async function readJson<T>(response: Response, endpoint: string): Promise<T> {
   const body = await response.text()
@@ -98,8 +103,24 @@ function App() {
     setActivities(activityData)
   }
 
+  const replayPendingActivities = async () => {
+    const pending = JSON.parse(localStorage.getItem(pendingActivitiesKey) || '[]') as PendingActivity[]
+    if (!pending.length) return
+    const remaining: PendingActivity[] = []
+    for (const item of pending) {
+      try {
+        const response = await fetch(apiUrl('activities'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item.payload) })
+        await readJson(response, 'Activity retry')
+      } catch {
+        remaining.push(item)
+      }
+    }
+    localStorage.setItem(pendingActivitiesKey, JSON.stringify(remaining))
+    if (remaining.length !== pending.length) await refresh()
+  }
+
   useEffect(() => {
-    refresh().catch((error: Error) => setFeedback({ kind: 'error', text: error.message }))
+    refresh().then(replayPendingActivities).catch((error: Error) => setFeedback({ kind: 'error', text: error.message }))
   }, [])
 
   useEffect(() => {
@@ -127,6 +148,7 @@ function App() {
     setNotes('')
     setJarCount('')
     setDetails({})
+    if (!prefilledBatchId && batches[0]) setPrefilledBatchId(batches[0].id)
     setClientRequestId(requestId())
     setFeedback(null)
   }
@@ -139,18 +161,21 @@ function App() {
     }
     setSaving(true)
     setFeedback(null)
+    const requestPayload = { processType: selectedProcess, activityDateTime, operator, notes, jarCount: jarCount ? Number(jarCount) : undefined, detailsJson: details, createJarLabels, batchId: prefilledBatchId, clientRequestId }
     try {
       const response = await fetch(apiUrl('activities'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ processType: selectedProcess, activityDateTime, operator, notes, jarCount: jarCount ? Number(jarCount) : undefined, detailsJson: details, createJarLabels, batchId: prefilledBatchId, clientRequestId }),
+        body: JSON.stringify(requestPayload),
       })
-      const payload = await readJson<{ batchCode?: string }>(response, 'Activity API')
+      const result = await readJson<{ batchCode?: string }>(response, 'Activity API')
       await refresh()
       setSelectedProcess(null)
-      setFeedback({ kind: 'success', text: payload.batchCode ? `Saved. New batch ${payload.batchCode} created.` : 'Activity saved locally.' })
+      setFeedback({ kind: 'success', text: result.batchCode ? `Saved. New batch ${result.batchCode} created.` : 'Activity saved locally.' })
     } catch (error) {
-      setFeedback({ kind: 'error', text: error instanceof Error ? error.message : 'The activity could not be saved.' })
+      const pending = JSON.parse(localStorage.getItem(pendingActivitiesKey) || '[]') as PendingActivity[]
+      localStorage.setItem(pendingActivitiesKey, JSON.stringify([...pending.filter((item) => item.clientRequestId !== clientRequestId), { clientRequestId, payload: requestPayload }]))
+      setFeedback({ kind: 'error', text: `${error instanceof Error ? error.message : 'The activity could not be saved.'} It is queued for retry.` })
     } finally {
       setSaving(false)
     }

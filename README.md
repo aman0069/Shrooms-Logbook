@@ -61,6 +61,10 @@ Build the production bundle:
 npm run build
 ```
 
+The tracked add-on project is `cordyceps_lab_console/`. Run the commands above from that directory when testing the current implementation. The root-level files are the original scaffold retained for repository history.
+
+Architecture: tablet browser -> Vite/React logbook -> Express API -> Prisma -> SQLite. Activity writes and Home Assistant sensor snapshots happen on the local API; Google Sheets is an optional downstream sync destination and is never required for a local save.
+
 ## Database setup
 
 Generate Prisma client:
@@ -83,6 +87,8 @@ npm run db:migrate
 
 For an existing pre-batch database, run `npm run db:push` once to apply the additive schema changes, then use `npm run db:migrate` for subsequent deployments. The Home Assistant add-on initializes the persistent database at `/data/lab.db`.
 
+For an existing add-on database already containing migration `0001_batch_tracking`, apply the additive `0002_sensor_metadata` migration from `cordyceps_lab_console/prisma/migrations/0002_sensor_metadata/migration.sql` before starting the updated server. Back up `/data/lab.db` first. A fresh database can use `npm run db:migrate` from `cordyceps_lab_console`.
+
 ## Batch tracking verification
 
 ```powershell
@@ -100,6 +106,14 @@ Open Prisma Studio:
 ```bash
 npm run db:studio
 ```
+
+Run the critical API regression check with:
+
+```bash
+npm run test:api
+```
+
+It uses a disposable SQLite database and verifies server validation plus idempotent duplicate submission. Failed browser submissions are retained in local storage and retried with the same `clientRequestId`.
 
 ## Data model
 
