@@ -71,6 +71,7 @@ model ActivityLog {
   jar              Jar?             @relation(fields: [jarId], references: [id], onDelete: SetNull)
   photos           ActivityPhoto[]
   sensorSnapshots  SensorSnapshot[]
+  cultureFlaskLog  CultureFlaskLog?
 
   @@index([activityDateTime])
   @@index([processType])
@@ -118,4 +119,32 @@ model ContaminationEvent {
   notes             String?
   lostJarCount      Int
   createdAt         DateTime @default(now())
+}
+
+model CultureFlask {
+  id            String   @id @default(cuid())
+  flaskCode     String   @unique
+  capacityMl    Int      @default(500)
+  strain        String   @default("Cordyceps militaris")
+  sourceCulture String?
+  status        String   @default("Not recorded")
+  preparedAt    DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  logs CultureFlaskLog[]
+}
+
+model CultureFlaskLog {
+  id         String   @id @default(cuid())
+  flaskId    String
+  activityId String   @unique
+  action     String
+  createdAt  DateTime @default(now())
+
+  flask    CultureFlask @relation(fields: [flaskId], references: [id], onDelete: Cascade)
+  activity ActivityLog  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([flaskId])
 }

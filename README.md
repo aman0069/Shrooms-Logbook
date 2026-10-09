@@ -118,9 +118,11 @@ It uses a disposable SQLite database and verifies server validation plus idempot
 ## Data model
 
 The database tracks cultivation data with these core entities:
-- `Batch` — strain, stage, creation date, logs, events
+- `Batch` — strain, stage, creation date, logs, events; daily batches contain up to three autoclave cycle entries
 - `Jar` — jar code, associated batch, stage, movement timestamps
+- `CultureFlask` / `CultureFlaskLog` — individually identified 500 ml liquid-culture flasks and their activity history; fresh databases start with `LC-001` through `LC-046`
 - `ActivityLog` — operational events and timing details
+- `SensorSnapshot` — room temperature, humidity, CO2, and light values captured with each activity when Home Assistant entities are configured in the app's Config tab
 - `ContaminationEvent` — contamination counts and notes
 
 This matches the dashboard behavior used in the app for real lab operations.
